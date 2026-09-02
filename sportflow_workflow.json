@@ -1,0 +1,265 @@
+{
+  "name": "SportFlow - Collecte Sportive IA (90% Afrique / 10% International)",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 6,14 * * *"
+            }
+          ]
+        }
+      },
+      "name": "Cron Quotidien (6h & 14h)",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "url": "https://ivoirepoint.net/feed/",
+        "options": {}
+      },
+      "name": "RSS IvoirePoint (Local)",
+      "type": "n8n-nodes-base.rssFeedRead",
+      "typeVersion": 1.1,
+      "position": [500, 100]
+    },
+    {
+      "parameters": {
+        "url": "https://www.africatopsports.com/feed/",
+        "options": {}
+      },
+      "name": "RSS Africa Top Sports (Afrique)",
+      "type": "n8n-nodes-base.rssFeedRead",
+      "typeVersion": 1.1,
+      "position": [500, 250]
+    },
+    {
+      "parameters": {
+        "url": "https://www.sportnewsafrica.com/feed/",
+        "options": {}
+      },
+      "name": "RSS Sport News Africa (Afrique)",
+      "type": "n8n-nodes-base.rssFeedRead",
+      "typeVersion": 1.1,
+      "position": [500, 400]
+    },
+    {
+      "parameters": {
+        "url": "https://api.radiofrance.fr/export/podcasts/v2/rss/rfi-sport.xml",
+        "options": {}
+      },
+      "name": "RSS RFI Sport (International)",
+      "type": "n8n-nodes-base.rssFeedRead",
+      "typeVersion": 1.1,
+      "position": [500, 550]
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combinationMode": "multiplex",
+        "options": {}
+      },
+      "name": "Fusionner Sources",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [760, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "/*\n  Normalisation, Filtrage 48h, Tagging Origine (90% Local/Afrique, 10% International)\n*/\nconst items = $input.all();\nconst now = new Date();\nconst maxAgeHours = 48;\n\nconst normalized = [];\n\nfor (const item of items) {\n  const json = item.json;\n  const title = json.title || json.headline || '';\n  const link = json.link || json.url || '';\n  const pubDate = new Date(json.isoDate || json.pubDate || now);\n  const content = json.contentSnippet || json.content || json.summary || '';\n  const imageUrl = json.enclosure?.url || json.image?.url || json['media:content']?.url || null;\n\n  // Check age < 48h\n  const hoursDiff = (now - pubDate) / (1000 * 60 * 60);\n  if (hoursDiff > maxAgeHours) continue;\n\n  // Determine source & origin\n  let sourceNom = 'SportFlow';\n  let origine = 'local';\n\n  if (link.includes('ivoirepoint')) {\n    sourceNom = 'IvoirePoint';\n    origine = 'local';\n  } else if (link.includes('africatopsports')) {\n    sourceNom = 'Africa Top Sports';\n    origine = 'afrique';\n  } else if (link.includes('sportnewsafrica')) {\n    sourceNom = 'Sport News Africa';\n    origine = 'afrique';\n  } else if (link.includes('radiofrance') || link.includes('rfi')) {\n    sourceNom = 'RFI Sport';\n    origine = 'international';\n\n    // Filter international: must contain African keywords\n    const keywords = ['afrique', 'africain', 'can', 'cameroun', 'côte d\\'ivoire', 'senegal', 'maroc', 'nigeria', 'algérie', 'ghana', 'osimhen', 'salah', 'hakimi', 'mane'];\n    const lowerText = (title + ' ' + content).toLowerCase();\n    const hasMatch = keywords.some(k => lowerText.includes(k));\n    if (!hasMatch) continue;\n  }\n\n  normalized.push({\n    json: {\n      titre_original: title,\n      source_url: link,\n      source_nom: sourceNom,\n      resume_original: content,\n      image_url: imageUrl,\n      created_at: pubDate.toISOString(),\n      origine: origine\n    }\n  });\n}\n\n// Apply 90/10 distribution target (prioritize local & afrique)\nconst localOrAfrique = normalized.filter(i => i.json.origine !== 'international');\nconst international = normalized.filter(i => i.json.origine === 'international');\n\n// Limit international to 10% of total selection\nconst targetInternationalCount = Math.ceil(localOrAfrique.length * 0.1);\nconst selectedInternational = international.slice(0, targetInternationalCount);\n\nreturn [...localOrAfrique, ...selectedInternational];"
+    },
+    "name": "Filtrage & Normalisation (90/10)",
+    "type": "n8n-nodes-base.code",
+    "typeVersion": 2,
+    "position": [980, 300]
+  },
+  {
+    "parameters": {
+      "method": "POST",
+      "url": "http://localhost:20128/v1/chat/completions",
+      "sendHeaders": true,
+      "headerParameters": {
+        "parameters": [
+          {
+            "name": "Content-Type",
+            "value": "application/json"
+          }
+        ]
+      },
+      "sendBody": true,
+      "specifyBody": "json",
+      "jsonBody": "={\n  \"model\": \"default\",\n  \"messages\": [\n    {\n      \"role\": \"system\",\n      \"content\": \"Tu es un journaliste sportif professionnel rédigeant pour le site SportFlow. Ton rôle est de réécrire et paraphraser complètement l'article source en français. Ne fais jamais de copie mot pour mot. Fournis un titre accrocheur mais factuel, un résumé de 3-4 lignes pour le champ 'resume', un contenu développé de 150 à 250 mots pour le champ 'contenu', et détermine la catégorie exacte parmi : Football, Basketball, Athlétisme, Sport local, Autre. Réponds STRICTEMENT au format JSON valide avec les clés exactes: titre, resume, contenu, categorie.\"\n    },\n    {\n      \"role\": \"user\",\n      \"content\": \"Titre original: {{$json.titre_original}}\\nSource: {{$json.source_nom}}\\nContenu source: {{$json.resume_original}}\"\n    }\n  ],\n  \"temperature\": 0.7\n}",
+      "options": {}
+    },
+    "name": "Génération IA (OmniRoute)",
+    "type": "n8n-nodes-base.httpRequest",
+    "typeVersion": 4.2,
+    "position": [1220, 300]
+  },
+  {
+    "parameters": {
+      "jsCode": "const items = $input.all();\nconst parsedItems = [];\n\nfor (let i = 0; i < items.length; i++) {\n  try {\n    const rawAiResponse = items[i].json.choices[0].message.content;\n    // Clean markdown code blocks if any\n    const cleanedJson = rawAiResponse.replace(/```json/g, '').replace(/```/g, '').trim();\n    const aiData = JSON.parse(cleanedJson);\n    \n    const originalItem = $('Filtrage & Normalisation (90/10)').all()[i].json;\n\n    parsedItems.push({\n      json: {\n        titre: aiData.titre || originalItem.titre_original,\n        resume: aiData.resume || originalItem.resume_original,\n        contenu: aiData.contenu || originalItem.resume_original,\n        source_url: originalItem.source_url,\n        source_nom: originalItem.source_nom,\n        categorie: aiData.categorie || 'Football',\n        image_url: originalItem.image_url,\n        created_at: originalItem.created_at,\n        origine: originalItem.origine\n      }\n    });\n  } catch (err) {\n    console.error('Erreur parsing JSON IA:', err);\n  }\n}\n\nreturn parsedItems;"
+    },
+    "name": "Parser Réponse IA",
+    "type": "n8n-nodes-base.code",
+    "typeVersion": 2,
+    "position": [1440, 300]
+  },
+  {
+    "parameters": {
+      "method": "POST",
+      "url": "={{ $env.NEXT_PUBLIC_SUPABASE_URL }}/rest/v1/articles",
+      "sendHeaders": true,
+      "headerParameters": {
+        "parameters": [
+          {
+            "name": "apikey",
+            "value": "={{ $env.SUPABASE_SERVICE_ROLE_KEY }}"
+          },
+          {
+            "name": "Authorization",
+            "value": "Bearer {{$env.SUPABASE_SERVICE_ROLE_KEY}}"
+          },
+          {
+            "name": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "name": "Prefer",
+            "value": "resolution=ignore-duplicates"
+          }
+        ]
+      },
+      "sendBody": true,
+      "specifyBody": "json",
+      "jsonBody": "={{ JSON.stringify($json) }}",
+      "options": {}
+    },
+    "name": "Insertion Supabase (articles)",
+    "type": "n8n-nodes-base.httpRequest",
+    "typeVersion": 4.2,
+    "position": [1660, 300]
+  }
+],
+  "connections": {
+    "Cron Quotidien (6h & 14h)": {
+      "main": [
+        [
+          {
+            "node": "RSS IvoirePoint (Local)",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "RSS Africa Top Sports (Afrique)",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "RSS Sport News Africa (Afrique)",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "RSS RFI Sport (International)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "RSS IvoirePoint (Local)": {
+      "main": [
+        [
+          {
+            "node": "Fusionner Sources",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "RSS Africa Top Sports (Afrique)": {
+      "main": [
+        [
+          {
+            "node": "Fusionner Sources",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "RSS Sport News Africa (Afrique)": {
+      "main": [
+        [
+          {
+            "node": "Fusionner Sources",
+            "type": "main",
+            "index": 2
+          }
+        ]
+      ]
+    },
+    "RSS RFI Sport (International)": {
+      "main": [
+        [
+          {
+            "node": "Fusionner Sources",
+            "type": "main",
+            "index": 3
+          }
+        ]
+      ]
+    },
+    "Fusionner Sources": {
+      "main": [
+        [
+          {
+            "node": "Filtrage & Normalisation (90/10)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filtrage & Normalisation (90/10)": {
+      "main": [
+        [
+          {
+            "node": "Génération IA (OmniRoute)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Génération IA (OmniRoute)": {
+      "main": [
+        [
+          {
+            "node": "Parser Réponse IA",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parser Réponse IA": {
+      "main": [
+        [
+          {
+            "node": "Insertion Supabase (articles)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {}
+}
