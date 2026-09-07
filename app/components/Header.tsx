@@ -2,15 +2,31 @@
 
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { Flame, Trophy, Search } from 'lucide-react';
+import { Flame, Trophy, Search, Activity } from 'lucide-react';
 import { useState } from 'react';
+import { usePathname } from 'next/navigation';
 
 export default function Header() {
   const [searchQuery, setSearchQuery] = useState('');
+  const pathname = usePathname();
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchQuery(e.target.value);
   };
+
+  const navLink = (href: string, label: string, icon: React.ReactNode, active: boolean) => (
+    <Link
+      href={href}
+      className={`flex items-center space-x-2 px-4 py-2 rounded-xl text-sm font-bold transition-all ${
+        active
+          ? 'bg-gradient-to-r from-sport-blue to-blue-600 text-white shadow-lg shadow-sport-blue/25'
+          : 'text-sport-gray hover:text-white hover:bg-sport-card'
+      }`}
+    >
+      {icon}
+      <span>{label}</span>
+    </Link>
+  );
 
   return (
     <header className="sticky top-0 z-50 backdrop-blur-md bg-sport-dark/80 border-b border-sport-card shadow-lg shadow-black/20">
@@ -51,18 +67,10 @@ export default function Header() {
             />
           </div>
 
-          <motion.div
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-          >
-            <Link 
-              href="/"
-              className="flex items-center space-x-2 bg-gradient-to-r from-sport-blue to-blue-600 hover:from-blue-600 hover:to-sport-blue text-white px-4 py-2 rounded-xl text-sm font-bold shadow-lg shadow-sport-blue/25 transition-all"
-            >
-              <Flame className="w-4 h-4 text-sport-orange" />
-              <span>À la une</span>
-            </Link>
-          </motion.div>
+          <div className="flex items-center space-x-2">
+            {navLink('/', 'À la une', <Flame className="w-4 h-4 text-sport-orange" />, pathname === '/')}
+            {navLink('/scores', 'Scores Live', <Activity className="w-4 h-4 text-sport-cyan animate-pulse" />, pathname === '/scores')}
+          </div>
         </div>
 
       </div>
