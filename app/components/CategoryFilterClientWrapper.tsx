@@ -47,7 +47,7 @@ export default function CategoryFilterClientWrapper({ articles, categories }: Pr
           >
             <SearchX className="w-12 h-12 text-sport-gray mb-3" />
             <h3 className="text-lg font-bold text-white mb-1">Aucun article trouvé</h3>
-            <p className="text-sm text-sport-gray">Il n'y a pas encore d'articles pour la catégorie {activeCategory}.</p>
+            <p className="text-sm text-sport-gray">Il n&apos;y a pas encore d&apos;articles pour la catégorie {activeCategory}.</p>
           </motion.div>
         )}
       </div>

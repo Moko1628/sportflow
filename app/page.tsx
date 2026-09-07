@@ -1,40 +1,44 @@
-'app/client'; // wait, root page can be server component with client child components
-
-import { supabase, isSupabaseConfigured, MOCK_ARTICLES, Article } from '@/app/lib/supabase';
+import { supabase, isSupabaseConfigured, Article } from '@/app/lib/supabase';
 import Header from '@/app/components/Header';
 import Footer from '@/app/components/Footer';
-import CategoryFilter from '@/app/components/CategoryFilter';
-import ArticleCard from '@/app/components/ArticleCard';
+import CategoryFilterClientWrapper from '@/app/components/CategoryFilterClientWrapper';
 import StatsCounter from '@/app/components/StatsCounter';
 import PageTransition from '@/app/components/PageTransition';
-import { Flame, Trophy, ArrowRight, Play, Sparkles } from 'lucide-react';
+import { Flame, Trophy, ArrowRight } from 'lucide-react';
 import Link from 'next/link';
 
-async function getArticles(): Promise<Article[]> {
-  if (isSupabaseConfigured && supabase) {
-    try {
-      const { data, error } = await supabase
-        .from('articles')
-        .select('*')
-        .order('created_at', { ascending: false });
-      
-      if (!error && data && data.length > 0) {
-        return data as Article[];
-      }
-    } catch (e) {
-      console.error('Supabase fetch error, using fallback mock data:', e);
-    }
+async function getArticles(): Promise<{ articles: Article[]; error: string | null }> {
+  if (!isSupabaseConfigured || !supabase) {
+    return { articles: [], error: 'Supabase n\'est pas configuré. Veuillez définir les variables d\'environnement.' };
   }
-  return MOCK_ARTICLES;
+
+  try {
+    const { data, error } = await supabase
+      .from('articles')
+      .select('id, titre, resume, contenu, source_url, source_nom, categorie, image_url, created_at, origine')
+      .order('created_at', { ascending: false })
+      .limit(50);
+
+    if (error) {
+      console.error('Supabase fetch error:', error.message);
+      return { articles: [], error: 'Impossible de charger les articles pour le moment.' };
+    }
+
+    return { articles: (data as Article[]) ?? [], error: null };
+  } catch (e) {
+    console.error('Unexpected error fetching articles:', e);
+    return { articles: [], error: 'Une erreur inattendue est survenue lors du chargement.' };
+  }
 }
 
-export const revalidate = 60; // ISR 60s
+export const revalidate = 60;
+
+const CATEGORIES = ['Tous', 'Football', 'Basketball', 'Athlétisme', 'Sport local', 'Autre'];
 
 export default async function Home() {
-  const articles = await getArticles();
-  const categories = ['Tous', 'Football', 'Basketball', 'F1', 'Tennis', 'Cyclisme'];
-  
-  const breakingArticle = articles.find(a => a.is_breaking) || articles[0];
+  const { articles, error } = await getArticles();
+
+  const breakingArticle = articles.length > 0 ? articles[0] : null;
 
   return (
     <div className="min-h-screen bg-sport-dark flex flex-col selection:bg-sport-blue selection:text-white">
@@ -43,7 +47,19 @@ export default async function Home() {
       <main className="flex-grow">
         <PageTransition>
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-            
+
+            {error && (
+              <div className="mb-8 bg-sport-card/70 border border-sport-red/40 text-sport-red px-5 py-4 rounded-2xl text-sm font-semibold">
+                {error}
+              </div>
+            )}
+
+            {!error && articles.length === 0 && (
+              <div className="mb-8 bg-sport-card/70 border border-sport-cardHover text-sport-gray px-5 py-4 rounded-2xl text-sm font-semibold">
+                Aucun article disponible pour le moment.
+              </div>
+            )}
+
             {/* Hero / Breaking Spotlight Banner */}
             {breakingArticle && (
               <section className="mb-12">
@@ -63,7 +79,7 @@ export default async function Home() {
                     <div className="flex items-center space-x-2 mb-4">
                       <span className="bg-sport-red text-white text-xs font-black uppercase px-3 py-1 rounded-xl shadow-lg shadow-sport-red/40 flex items-center space-x-1.5 animate-pulse">
                         <Flame className="w-3.5 h-3.5 fill-current" />
-                        <span>À la Une • Flash Direct</span>
+                        <span>À la Une</span>
                       </span>
                       <span className="bg-sport-dark/80 backdrop-blur-md text-sport-cyan text-xs font-bold px-3 py-1 rounded-xl border border-sport-cyan/20">
                         {breakingArticle.categorie}
@@ -83,7 +99,7 @@ export default async function Home() {
                         href={`/article/${breakingArticle.id}`}
                         className="flex items-center space-x-2 bg-gradient-to-r from-sport-blue to-sport-cyan hover:from-blue-600 hover:to-sport-blue text-white px-6 py-3 rounded-2xl font-bold shadow-lg shadow-sport-blue/30 transition-all transform hover:-translate-y-0.5"
                       >
-                        <span>Lire l'article complet</span>
+                        <span>Lire l&apos;article complet</span>
                         <ArrowRight className="w-4 h-4" />
                       </Link>
 
@@ -107,8 +123,7 @@ export default async function Home() {
                 <span className="text-xs text-sport-gray font-medium">Actualités en continu</span>
               </div>
 
-              {/* Client side component for interactive category filtering */}
-              <CategoryFilterWrapper articles={articles} categories={categories} />
+              <CategoryFilterClientWrapper articles={articles} categories={CATEGORIES} />
             </section>
 
             {/* Stats Counter Section */}
@@ -121,11 +136,4 @@ export default async function Home() {
       <Footer />
     </div>
   );
-}
-
-// Client wrapper to handle stateful category filtering & search on the home page
-import CategoryFilterClientWrapper from '@/app/components/CategoryFilterClientWrapper';
-
-function CategoryFilterWrapper({ articles, categories }: { articles: Article[]; categories: string[] }) {
-  return <CategoryFilterClientWrapper articles={articles} categories={categories} />;
 }

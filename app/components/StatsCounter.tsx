@@ -2,10 +2,10 @@
 
 import { motion, useInView } from 'framer-motion';
 import { useRef, useEffect, useState } from 'react';
-import { Trophy, Users, Zap, Award } from 'lucide-react';
+import { Trophy, Users, Zap, Award, type LucideIcon } from 'lucide-react';
 
 interface StatItem {
-  icon: any;
+  icon: LucideIcon;
   label: string;
   value: number;
   suffix: string;

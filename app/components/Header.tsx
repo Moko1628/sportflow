@@ -2,22 +2,21 @@
 
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { Flame, Trophy, Radio, Search } from 'lucide-react';
+import { Flame, Trophy, Search } from 'lucide-react';
 import { useState } from 'react';
 
-export default function Header({ onSearch }: { onSearch?: (query: string) => void }) {
+export default function Header() {
   const [searchQuery, setSearchQuery] = useState('');
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchQuery(e.target.value);
-    if (onSearch) onSearch(e.target.value);
   };
 
   return (
     <header className="sticky top-0 z-50 backdrop-blur-md bg-sport-dark/80 border-b border-sport-card shadow-lg shadow-black/20">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
         
-        {/* Logo with spring bounce animation */}
+        {/* Logo */}
         <Link href="/">
           <motion.div 
             className="flex items-center space-x-3 cursor-pointer group"
@@ -27,27 +26,17 @@ export default function Header({ onSearch }: { onSearch?: (query: string) => voi
           >
             <div className="relative w-11 h-11 rounded-xl bg-gradient-to-tr from-sport-blue via-sport-cyan to-sport-orange flex items-center justify-center shadow-lg shadow-sport-blue/30 group-hover:scale-105 transition-transform">
               <Trophy className="w-6 h-6 text-white" />
-              <div className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-sport-red rounded-full border-2 border-sport-dark animate-pulse" />
             </div>
             <div>
               <span className="text-2xl font-black tracking-wider text-white uppercase italic">
                 Sport<span className="text-sport-cyan">Flow</span>
               </span>
-              <div className="flex items-center space-x-1.5 text-[10px] text-sport-gray font-semibold tracking-widest uppercase">
-                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                <span>Live Scores & Actus</span>
+              <div className="text-[10px] text-sport-gray font-semibold tracking-widest uppercase">
+                <span>Actualités sportives</span>
               </div>
             </div>
           </motion.div>
         </Link>
-
-        {/* Live Ticker / Highlights preview badge */}
-        <div className="hidden md:flex items-center space-x-2 bg-sport-card/90 px-4 py-2 rounded-full border border-sport-cardHover text-xs text-sport-gray">
-          <Radio className="w-4 h-4 text-sport-red animate-pulse" />
-          <span className="font-bold text-white">DIRECT :</span>
-          <span className="text-sport-light truncate max-w-xs">Real Madrid vs Manchester City (3-2) • Fin du match</span>
-          <span className="bg-sport-red/20 text-sport-red px-2 py-0.5 rounded text-[10px] font-bold uppercase">LIVE</span>
-        </div>
 
         {/* Search & Actions */}
         <div className="flex items-center space-x-4">

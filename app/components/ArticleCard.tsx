@@ -3,7 +3,8 @@
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { Article } from '@/app/lib/supabase';
-import { Clock, ExternalLink, Zap } from 'lucide-react';
+import { Clock, ExternalLink } from 'lucide-react';
+import { Trophy } from 'lucide-react';
 
 interface ArticleCardProps {
   article: Article;
@@ -11,15 +12,6 @@ interface ArticleCardProps {
 }
 
 export default function ArticleCard({ article, index }: ArticleCardProps) {
-  // Check if article is less than 1 hour old
-  const isRecent = () => {
-    if (article.is_breaking) return true;
-    const diffHours = (Date.now() - new Date(article.created_at).getTime()) / (1000 * 60 * 60);
-    return diffHours < 1;
-  };
-
-  const breaking = isRecent();
-
   const formatDate = (dateString: string) => {
     try {
       const date = new Date(dateString);
@@ -61,27 +53,20 @@ export default function ArticleCard({ article, index }: ArticleCardProps) {
           />
         ) : (
           <div className="w-full h-full bg-gradient-to-br from-sport-card to-sport-cardHover flex items-center justify-center">
-            <span className="text-sport-gray text-xs font-bold uppercase tracking-wider">SportFlow News</span>
+            <div className="text-center">
+              <Trophy className="w-8 h-8 text-sport-cyan mx-auto mb-1" />
+              <span className="text-sport-gray text-xs font-bold uppercase tracking-wider">{article.categorie}</span>
+            </div>
           </div>
         )}
 
         <div className="absolute inset-0 bg-gradient-to-t from-sport-card via-transparent to-black/30" />
 
-        {/* Category badge with pulse effect for breaking news */}
+        {/* Category badge */}
         <div className="absolute top-3 left-3 flex items-center space-x-2">
           <span className="bg-sport-dark/80 backdrop-blur-md text-white text-[11px] font-extrabold uppercase px-2.5 py-1 rounded-lg border border-white/10 tracking-wider">
             {article.categorie}
           </span>
-          {breaking && (
-            <motion.span
-              animate={{ opacity: [1, 0.6, 1], scale: [1, 1.05, 1] }}
-              transition={{ duration: 1.2, repeat: Infinity }}
-              className="flex items-center space-x-1 bg-sport-red text-white text-[10px] font-black uppercase px-2 py-1 rounded-lg shadow-md shadow-sport-red/40"
-            >
-              <Zap className="w-3 h-3 fill-current" />
-              <span>Flash</span>
-            </motion.span>
-          )}
         </div>
 
         {/* Source info */}
@@ -113,7 +98,7 @@ export default function ArticleCard({ article, index }: ArticleCardProps) {
             href={`/article/${article.id}`}
             className="text-xs font-bold text-sport-blue group-hover:text-sport-cyan flex items-center space-x-1 transition-colors"
           >
-            <span>Lire l'analyse</span>
+            <span>L&apos;analyse</span>
             <span>→</span>
           </Link>
 

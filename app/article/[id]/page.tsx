@@ -1,9 +1,9 @@
-import { supabase, isSupabaseConfigured, MOCK_ARTICLES, Article } from '@/app/lib/supabase';
+import { supabase, isSupabaseConfigured, Article } from '@/app/lib/supabase';
 import Header from '@/app/components/Header';
 import Footer from '@/app/components/Footer';
 import ArticleCard from '@/app/components/ArticleCard';
 import PageTransition from '@/app/components/PageTransition';
-import { Clock, ExternalLink, ArrowLeft, Share2, Bookmark, Trophy } from 'lucide-react';
+import { Clock, ExternalLink, ArrowLeft, Trophy } from 'lucide-react';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 
@@ -14,44 +14,65 @@ interface PageProps {
 }
 
 async function getArticleById(id: string): Promise<Article | null> {
-  if (isSupabaseConfigured && supabase) {
-    try {
-      const { data, error } = await supabase
-        .from('articles')
-        .select('*')
-        .eq('id', id)
-        .single();
-      
-      if (!error && data) {
-        return data as Article;
-      }
-    } catch (e) {
-      console.error('Supabase fetch article error:', e);
-    }
+  if (!isSupabaseConfigured || !supabase) {
+    console.error('Supabase is not configured');
+    return null;
   }
 
-  // Fallback to mock data
-  const found = MOCK_ARTICLES.find(a => a.id === id);
-  return found || null;
+  try {
+    const { data, error } = await supabase
+      .from('articles')
+      .select('id, titre, resume, contenu, source_url, source_nom, categorie, image_url, created_at, origine')
+      .eq('id', id)
+      .single();
+
+    if (error) {
+      console.error('Supabase fetch article error:', error.message);
+      return null;
+    }
+
+    return data as Article;
+  } catch (e) {
+    console.error('Unexpected error fetching article:', e);
+    return null;
+  }
 }
 
 async function getSimilarArticles(currentId: string, category: string): Promise<Article[]> {
-  if (isSupabaseConfigured && supabase) {
-    try {
-      const { data } = await supabase
-        .from('articles')
-        .select('*')
-        .neq('id', currentId)
-        .eq('categorie', category)
-        .limit(3);
-      
-      if (data && data.length > 0) return data as Article[];
-    } catch (e) {
-      console.error('Supabase similar error:', e);
-    }
+  if (!isSupabaseConfigured || !supabase) {
+    return [];
   }
 
-  return MOCK_ARTICLES.filter(a => a.id !== currentId && a.categorie === category).slice(0, 3);
+  try {
+    const { data, error } = await supabase
+      .from('articles')
+      .select('id, titre, resume, contenu, source_url, source_nom, categorie, image_url, created_at, origine')
+      .neq('id', currentId)
+      .eq('categorie', category)
+      .order('created_at', { ascending: false })
+      .limit(4);
+
+    if (error) {
+      console.error('Supabase similar articles error:', error.message);
+      return [];
+    }
+
+    return (data as Article[]) ?? [];
+  } catch (e) {
+    console.error('Unexpected error fetching similar articles:', e);
+    return [];
+  }
+}
+
+export async function generateMetadata({ params }: PageProps) {
+  const article = await getArticleById(params.id);
+  if (!article) {
+    return { title: 'Article non trouvé — SportFlow' };
+  }
+  return {
+    title: `${article.titre} — SportFlow`,
+    description: article.resume,
+  };
 }
 
 export default async function ArticlePage({ params }: PageProps) {
@@ -92,7 +113,7 @@ export default async function ArticlePage({ params }: PageProps) {
                 className="inline-flex items-center space-x-2 text-sport-gray hover:text-white bg-sport-card hover:bg-sport-cardHover px-4 py-2.5 rounded-xl border border-sport-cardHover transition-colors text-sm font-semibold"
               >
                 <ArrowLeft className="w-4 h-4" />
-                <span>Retour au fil d'actualités</span>
+                <span>Retour au fil d&apos;actualités</span>
               </Link>
             </div>
 
@@ -144,7 +165,7 @@ export default async function ArticlePage({ params }: PageProps) {
             </header>
 
             {/* Featured Image */}
-            {article.image_url && (
+            {article.image_url ? (
               <div className="mb-10 rounded-3xl overflow-hidden border border-sport-cardHover shadow-2xl">
                 <img
                   src={article.image_url}
@@ -152,26 +173,25 @@ export default async function ArticlePage({ params }: PageProps) {
                   className="w-full h-[360px] sm:h-[480px] object-cover"
                 />
               </div>
+            ) : (
+              <div className="mb-10 rounded-3xl overflow-hidden border border-sport-cardHover bg-gradient-to-br from-sport-card to-sport-cardHover flex items-center justify-center h-[200px]">
+                <div className="text-center">
+                  <Trophy className="w-10 h-10 text-sport-cyan mx-auto mb-2" />
+                  <span className="text-sport-gray text-sm font-bold uppercase tracking-wider">{article.categorie}</span>
+                </div>
+              </div>
             )}
 
             {/* Article Content */}
             <div className="bg-sport-card/50 border border-sport-cardHover rounded-3xl p-6 sm:p-10 mb-16 shadow-xl">
               <div className="prose prose-invert max-w-none text-sport-light text-base sm:text-lg leading-relaxed space-y-6">
-                <p>
-                  {article.contenu || article.resume}
-                </p>
-                <p>
-                  L'intensité de cette rencontre a tenu toutes ses promesses, confirmant l'excellente dynamique observée ces dernières semaines dans cette compétition. Les observateurs retiendront la maîtrise tactique et l'engagement physique total des protagonistes sur le terrain.
-                </p>
-                <h3 className="text-xl font-bold text-white pt-4">Les temps forts de la rencontre</h3>
-                <ul className="space-y-3 list-disc pl-5 text-sport-gray">
-                  <li>Une entame de match tambour battant avec un pressing étouffant dès la première minute.</li>
-                  <div>Ouverture du score suite à une action collective d'école menée de main de maître.</div>
-                  <li>Gestion tactique rigoureuse en seconde période pour préserver l'avantage au tableau d'affichage.</li>
-                </ul>
-                <p>
-                  La suite de la saison s'annonce palpitante avec des échéances décisives qui marqueront sans aucun doute un tournant dans la course aux trophées. Restez connectés sur SportFlow pour ne rien manquer de l'actualité sportive en direct.
-                </p>
+                {article.contenu ? (
+                  article.contenu.split('\n').filter(p => p.trim()).map((paragraph, idx) => (
+                    <p key={idx}>{paragraph}</p>
+                  ))
+                ) : (
+                  <p>{article.resume}</p>
+                )}
               </div>
             </div>
 

@@ -24,7 +24,7 @@ export default function Footer() {
               </span>
             </div>
             <p className="text-sport-gray text-sm max-w-sm leading-relaxed">
-              Votre source ultime d'actualités sportives en temps réel. Scores en direct, analyses tactiques, transferts et résumés de matchs exclusifs.
+              Votre source ultime d&apos;actualités sportives en temps réel. Scores en direct, analyses tactiques, transferts et résumés de matchs exclusifs.
             </p>
             <div className="flex items-center space-x-3 pt-2">
               <a href="https://twitter.com" target="_blank" rel="noopener noreferrer" className="w-10 h-10 rounded-xl bg-sport-card border border-sport-cardHover flex items-center justify-center text-sport-gray hover:text-white hover:border-sport-blue transition-colors" aria-label="Twitter">
