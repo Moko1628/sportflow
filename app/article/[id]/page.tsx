@@ -67,10 +67,10 @@ async function getSimilarArticles(currentId: string, category: string): Promise<
 export async function generateMetadata({ params }: PageProps) {
   const article = await getArticleById(params.id);
   if (!article) {
-    return { title: 'Article non trouvé — SportFlow' };
+    return { title: 'Article non trouvé — Babiflash' };
   }
   return {
-    title: `${article.titre} — SportFlow`,
+    title: `${article.titre} — Babiflash`,
     description: article.resume,
   };
 }

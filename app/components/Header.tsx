@@ -29,7 +29,7 @@ export default function Header() {
             </div>
             <div>
               <span className="text-2xl font-black tracking-wider text-white uppercase italic">
-                Sport<span className="text-sport-cyan">Flow</span>
+                Babi<span className="text-sport-cyan">flash</span>
               </span>
               <div className="text-[10px] text-sport-gray font-semibold tracking-widest uppercase">
                 <span>Actualités sportives</span>

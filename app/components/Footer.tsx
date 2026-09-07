@@ -20,7 +20,7 @@ export default function Footer() {
                 <Trophy className="w-5 h-5 text-white" />
               </div>
               <span className="text-2xl font-black tracking-wider text-white uppercase italic">
-                Sport<span className="text-sport-cyan">Flow</span>
+                Babi<span className="text-sport-cyan">flash</span>
               </span>
             </div>
             <p className="text-sport-gray text-sm max-w-sm leading-relaxed">
@@ -68,7 +68,7 @@ export default function Footer() {
         </div>
 
         <div className="border-t border-sport-card pt-8 flex flex-col sm:flex-row items-center justify-between text-xs text-sport-gray">
-          <p>© {new Date().getFullYear()} SportFlow. Tous droits réservés. Propulsé par Next.js & Supabase.</p>
+          <p>© {new Date().getFullYear()} Babiflash. Tous droits réservés. Propulsé par Next.js & Supabase.</p>
           <button 
             onClick={scrollToTop}
             className="mt-4 sm:mt-0 flex items-center space-x-2 bg-sport-card hover:bg-sport-cardHover text-white px-4 py-2 rounded-xl border border-sport-cardHover transition-colors"

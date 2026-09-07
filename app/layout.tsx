@@ -14,7 +14,7 @@ const geistMono = localFont({
 });
 
 export const metadata: Metadata = {
-  title: "SportFlow — Actualités Sportives en Direct",
+  title: "Babiflash — Actualités Sportives en Direct",
   description: "Votre source ultime d'actualités sportives en temps réel. Scores en direct, analyses tactiques et transferts.",
 };
 
