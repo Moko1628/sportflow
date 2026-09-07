@@ -4,9 +4,8 @@
 // ============================================================================
 
 import type { FootballFixture } from './types';
-import type { FootballProvider, FootballProviderResponse } from './provider';
+import type { FootballProvider } from './provider';
 import { ApiFootballProvider } from './providers/apiFootball';
-import { classifyMatch } from './filters';
 
 // Singleton du provider (swap facilement en changeant cette ligne)
 let provider: FootballProvider | null = null;

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 // ============================================================================
 // BABIscore — API-Football Provider
 // Fournisseur gratuit (100 requêtes/jour, pas de carte bancaire)
@@ -10,30 +11,36 @@ import { getCached, setCache, TTL } from '../cache';
 
 const API_BASE = 'https://v3.football.api-sports.io';
 
-function getApiKey(): string {
-  const key = process.env.FOOTBALL_API_KEY;
-  if (!key) throw new Error('FOOTBALL_API_KEY is not configured in environment variables.');
-  return key;
-}
-
 async function apiFetch(endpoint: string, params: Record<string, string> = {}): Promise<any> {
+  const key = process.env.FOOTBALL_API_KEY;
+  if (!key) {
+    console.warn('WARNING: FOOTBALL_API_KEY is not configured in environment variables. Returning empty response.');
+    return { response: [] };
+  }
+
   const url = new URL(`${API_BASE}/${endpoint}`);
   Object.entries(params).forEach(([k, v]) => url.searchParams.set(k, v));
 
-  const res = await fetch(url.toString(), {
-    headers: {
-      'x-apisports-key': getApiKey(),
-    },
-    next: { revalidate: 60 },
-  });
+  try {
+    const res = await fetch(url.toString(), {
+      headers: {
+        'x-apisports-key': key,
+      },
+      next: { revalidate: 60 },
+    });
 
-  if (!res.ok) {
-    const text = await res.text().catch(() => '');
-    throw new Error(`API-Football ${res.status}: ${text}`);
+    if (!res.ok) {
+      const text = await res.text().catch(() => '');
+      console.warn(`API-Football error ${res.status}: ${text}. Returning empty response.`);
+      return { response: [] };
+    }
+
+    const json = await res.json();
+    return json;
+  } catch (err) {
+    console.warn('API-Football fetch failed:', err);
+    return { response: [] };
   }
-
-  const json = await res.json();
-  return json;
 }
 
 function mapFixture(raw: any): FootballFixture {

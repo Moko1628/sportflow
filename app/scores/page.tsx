@@ -9,12 +9,11 @@ import {
   groupByLeague 
 } from '@/app/lib/football/client';
 import { PRIORITY_LABELS, classifyMatch } from '@/app/lib/football/filters';
-import { Flame, Trophy, Calendar, Clock, MapPin, AlertCircle, ArrowRight } from 'lucide-react';
-import Link from 'next/link';
+import { Flame, Trophy, Calendar, Clock } from 'lucide-react';
 
 export const metadata: Metadata = {
   title: 'BABIscore — Scores en Direct & Calendrier Football Africain',
-  description: 'Tous les matchs en direct, scores et calendrier de football. Priorité absolue à la Côte d\'Ivoire, l\'Afrique et les compétitions CAF.',
+  description: 'Tous les matchs en direct, scores et calendrier de football. Priorité absolue à la Côte d&apos;Ivoire, l&apos;Afrique et les compétitions CAF.',
 };
 
 export const revalidate = 30; // Revalidate every 30 seconds for live scores
@@ -41,7 +40,7 @@ export default async function ScoresPage() {
               <div>
                 <div className="flex items-center justify-center sm:justify-start space-x-2 mb-2">
                   <span className="bg-sport-cyan/10 text-sport-cyan text-xs font-bold px-3 py-1 rounded-xl border border-sport-cyan/20">
-                    🇨🇮 Côte d'Ivoire & 🌍 Afrique Prioritaires
+                    🇨🇮 Côte d&apos;Ivoire & 🌍 Afrique Prioritaires
                   </span>
                 </div>
                 <h1 className="text-3xl sm:text-4xl font-black text-white uppercase italic tracking-wider flex items-center justify-center sm:justify-start space-x-3">
@@ -134,14 +133,14 @@ export default async function ScoresPage() {
               <div className="flex items-center space-x-2 mb-6">
                 <span className="bg-sport-blue text-white text-xs font-black uppercase px-3 py-1.5 rounded-xl shadow-lg shadow-sport-blue/30 flex items-center space-x-2">
                   <Calendar className="w-4 h-4" />
-                  <span>AUJOURD'HUI</span>
+                  <span>AUJOURD&apos;HUI</span>
                 </span>
-                <span className="text-xs text-sport-gray font-medium">({todaysMatches.length} match{todaysMatches.length > 1 ? 's' : ''} programmés aujourd'hui)</span>
+                <span className="text-xs text-sport-gray font-medium">({todaysMatches.length} match{todaysMatches.length > 1 ? 's' : ''} programmés aujourd&apos;hui)</span>
               </div>
 
               {todaysMatches.length === 0 ? (
                 <div className="bg-sport-card/50 border border-sport-cardHover rounded-3xl p-8 text-center">
-                  <p className="text-sport-gray text-sm">Aucun match programmé pour aujourd'hui ou données en attente de synchronisation API.</p>
+                  <p className="text-sport-gray text-sm">Aucun match programmé pour aujourd&apos;hui ou données en attente de synchronisation API.</p>
                 </div>
               ) : (
                 <div className="space-y-6">
@@ -220,7 +219,7 @@ export default async function ScoresPage() {
                 </div>
               ) : (
                 <div className="bg-sport-card border border-sport-cardHover rounded-3xl p-6 shadow-xl">
-                  <p className="text-xs text-sport-gray mb-4">Aperçu des rencontres programmées pour la semaine à venir à travers l'Afrique et le monde.</p>
+                  <p className="text-xs text-sport-gray mb-4">Aperçu des rencontres programmées pour la semaine à venir à travers l&apos;Afrique et le monde.</p>
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 max-h-[500px] overflow-y-auto pr-2">
                     {weekMatches.slice(0, 30).map((match) => {
                       const d = new Date(match.date);
