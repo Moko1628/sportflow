@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 // ============================================================================
-// BABIscore — TheSportsDB Provider (100% Gratuit, Clé publique "3", Sans CB)
-// Source de données réelle : scores en direct, calendrier et championnats africains/internationaux
+// BABIscore — TheSportsDB Provider (100% Gratuit, Clé "3", Sans CB)
+// Couverture élargie : Côte d'Ivoire, Égypte, Afrique du Sud, Maroc, Europe
 // ============================================================================
 
 import type { FootballFixture } from '../types';
@@ -10,8 +10,11 @@ import { getCached, setCache, TTL } from '../cache';
 
 const API_BASE = 'https://www.thesportsdb.com/api/v1/json/3';
 
-// Ligues surveillées (Afrique / Maroc / Égypte / International / Europe)
+// Liste élargie des ligues africaines et internationales suivies
 const LEAGUE_IDS = [
+  5241, // Ivory Coast Ligue 1
+  4829, // Egyptian Premier League
+  4802, // South African Premier Soccer League (PSL)
   4520, // Moroccan Championship (Botola Pro)
   4328, // English Premier League
   4334, // French Ligue 1
@@ -22,7 +25,6 @@ function mapSportsDbEvent(raw: any): FootballFixture {
   const timestamp = raw.strTimestamp ? new Date(raw.strTimestamp).getTime() : Date.now();
   const dateStr = raw.strTimestamp ? raw.strTimestamp + 'Z' : new Date().toISOString();
 
-  // Statut du match
   let shortStatus = 'NS';
   let longStatus = 'Not Started';
   if (raw.strStatus === 'FT') {
@@ -32,6 +34,15 @@ function mapSportsDbEvent(raw: any): FootballFixture {
     shortStatus = raw.strStatus;
     longStatus = raw.strStatus === 'HT' ? 'Half Time' : 'Live';
   }
+
+  // Country code mapping
+  const country = raw.strCountry || 'International';
+  let countryCode: string | undefined = undefined;
+  if (country === 'Morocco') countryCode = 'MA';
+  else if (country === 'Ivory Coast') countryCode = 'CI';
+  else if (country === 'Egypt') countryCode = 'EG';
+  else if (country === 'South Africa') countryCode = 'ZA';
+  else if (country === 'England' || country === 'UK') countryCode = 'GB';
 
   return {
     id: Number(raw.idEvent) || Math.floor(Math.random() * 100000),
@@ -47,8 +58,8 @@ function mapSportsDbEvent(raw: any): FootballFixture {
     league: {
       id: Number(raw.idLeague) || 0,
       name: raw.strLeague || 'Football League',
-      country: raw.strCountry || 'International',
-      countryCode: raw.strCountry === 'Morocco' ? 'MA' : raw.strCountry === 'England' ? 'GB' : undefined,
+      country,
+      countryCode,
       logo: raw.strLeagueBadge || undefined,
       season: raw.strSeason ? parseInt(raw.strSeason) : 2026,
     },
@@ -75,7 +86,7 @@ export class SportsDbProvider implements FootballProvider {
   readonly name = 'thesportsdb';
 
   async getLiveMatches(): Promise<FootballProviderResponse<FootballFixture[]>> {
-    const cacheKey = 'sportsdb:live';
+    const cacheKey = 'sportsdb:live:v2';
     const cached = getCached<FootballFixture[]>(cacheKey);
     if (cached) return { data: cached, provider: this.name, cached: true };
 
@@ -86,9 +97,8 @@ export class SportsDbProvider implements FootballProvider {
 
       const json = await res.json();
       const events = json.events ?? [];
-      // Filtrer uniquement le soccer en direct (ou statut actif)
       const fixtures = events
-        .filter((e: any) => e.strSport === 'Soccer')
+        .filter((e: any) => e.strSport === 'Soccer' && LEAGUE_IDS.includes(Number(e.idLeague)))
         .map(mapSportsDbEvent);
 
       setCache(cacheKey, fixtures, TTL.LIVE);
@@ -100,7 +110,7 @@ export class SportsDbProvider implements FootballProvider {
   }
 
   async getMatchesByDate(date: string): Promise<FootballProviderResponse<FootballFixture[]>> {
-    const cacheKey = `sportsdb:date:${date}`;
+    const cacheKey = `sportsdb:date:v2:${date}`;
     const cached = getCached<FootballFixture[]>(cacheKey);
     if (cached) return { data: cached, provider: this.name, cached: true };
 
@@ -111,7 +121,7 @@ export class SportsDbProvider implements FootballProvider {
       const json = await res.json();
       const events = json.events ?? [];
       const fixtures = events
-        .filter((e: any) => e.strSport === 'Soccer')
+        .filter((e: any) => e.strSport === 'Soccer' && LEAGUE_IDS.includes(Number(e.idLeague)))
         .map(mapSportsDbEvent);
 
       setCache(cacheKey, fixtures, TTL.FIXTURES_TODAY);
@@ -123,24 +133,30 @@ export class SportsDbProvider implements FootballProvider {
   }
 
   async getFixturesForDateRange(startDate: string, endDate: string): Promise<FootballProviderResponse<FootballFixture[]>> {
-    const cacheKey = `sportsdb:range:${startDate}:${endDate}`;
+    const cacheKey = `sportsdb:range:v2:${startDate}:${endDate}`;
     const cached = getCached<FootballFixture[]>(cacheKey);
     if (cached) return { data: cached, provider: this.name, cached: true };
 
     try {
-      // Récupérer les prochains matchs pour nos ligues clés (Afrique + International)
       const allFixtures: FootballFixture[] = [];
+      const seenIds = new Set<number>();
+
       for (const leagueId of LEAGUE_IDS) {
         try {
           const res = await fetch(`${API_BASE}/eventsnextleague.php?id=${leagueId}`, { next: { revalidate: 300 } });
           if (res.ok) {
             const json = await res.json();
             const events = json.events ?? [];
-            const mapped = events.map(mapSportsDbEvent);
-            allFixtures.push(...mapped);
+            for (const ev of events) {
+              const mapped = mapSportsDbEvent(ev);
+              if (!seenIds.has(mapped.id)) {
+                seenIds.add(mapped.id);
+                allFixtures.push(mapped);
+              }
+            }
           }
         } catch {
-          // ignorer les erreurs individuelles de ligue
+          // ignorer
         }
       }
 
@@ -153,7 +169,7 @@ export class SportsDbProvider implements FootballProvider {
   }
 
   async getMatchById(id: number): Promise<FootballProviderResponse<FootballFixture | null>> {
-    const cacheKey = `sportsdb:match:${id}`;
+    const cacheKey = `sportsdb:match:v2:${id}`;
     const cached = getCached<FootballFixture>(cacheKey);
     if (cached) return { data: cached, provider: this.name, cached: true };
 
