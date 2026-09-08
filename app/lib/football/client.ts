@@ -1,20 +1,18 @@
 // ============================================================================
 // BABIscore — Football Client (point d'entrée unique pour les données)
-// Utilise le provider sélectionné + cache + filtres africains
+// Utilise TheSportsDB comme source réelle gratuite (clé "3", sans CB)
 // ============================================================================
 
 import type { FootballFixture } from './types';
 import type { FootballProvider } from './provider';
-import { ApiFootballProvider } from './providers/apiFootball';
+import { SportsDbProvider } from './providers/sportsDb';
 
-// Singleton du provider (swap facilement en changeant cette ligne)
 let provider: FootballProvider | null = null;
 
 function getProvider(): FootballProvider {
   if (!provider) {
-    // Par défaut on utilise API-Football
-    // Pour changer de provider : provider = new SportmonksProvider();
-    provider = new ApiFootballProvider();
+    // Source principale : TheSportsDB (100% réel, gratuit, sans carte bancaire)
+    provider = new SportsDbProvider();
   }
   return provider;
 }

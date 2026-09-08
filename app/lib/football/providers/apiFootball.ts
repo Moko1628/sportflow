@@ -1,14 +1,12 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 // ============================================================================
-// BABIscore — API-Football Provider avec Fallback intelligent
-// Fournisseur 100% gratuit (100 requêtes/jour) + mode démo si clé absente
+// BABIscore — API-Football Provider (Support API-Sports & RapidAPI)
+// 100% gratuit + Fallback intelligent si aucune clé n'est configurée
 // ============================================================================
 
 import type { FootballFixture } from '../types';
 import type { FootballProvider, FootballProviderResponse } from '../provider';
 import { getCached, setCache, TTL } from '../cache';
-
-const API_BASE = 'https://v3.football.api-sports.io';
 
 // Matchs de démonstration / fallback orientés Afrique & International
 const FALLBACK_MATCHES: FootballFixture[] = [
@@ -99,20 +97,35 @@ const FALLBACK_MATCHES: FootballFixture[] = [
 ];
 
 async function apiFetch(endpoint: string, params: Record<string, string> = {}): Promise<any> {
-  const key = process.env.FOOTBALL_API_KEY;
+  const footballApiKey = process.env.FOOTBALL_API_KEY;
+  const rapidApiKey = process.env.RAPIDAPI_KEY;
+
+  const key = footballApiKey || rapidApiKey;
   if (!key) {
-    console.warn('WARNING: FOOTBALL_API_KEY is not configured. Using fallback data.');
+    console.warn('WARNING: No API key (FOOTBALL_API_KEY or RAPIDAPI_KEY) configured. Using fallback data.');
     return { response: null };
   }
+
+  const isRapidAPI = !footballApiKey && !!rapidApiKey;
+  const API_BASE = isRapidAPI 
+    ? 'https://api-football-v1.p.rapidapi.com/v3' 
+    : 'https://v3.football.api-sports.io';
+
+  const headers: Record<string, string> = isRapidAPI
+    ? {
+        'X-RapidAPI-Key': key,
+        'X-RapidAPI-Host': 'api-football-v1.p.rapidapi.com',
+      }
+    : {
+        'x-apisports-key': key,
+      };
 
   const url = new URL(`${API_BASE}/${endpoint}`);
   Object.entries(params).forEach(([k, v]) => url.searchParams.set(k, v));
 
   try {
     const res = await fetch(url.toString(), {
-      headers: {
-        'x-apisports-key': key,
-      },
+      headers,
       next: { revalidate: 60 },
     });
 
@@ -180,7 +193,7 @@ function mapFixture(raw: any): FootballFixture {
     },
     score: {
       halftime: { home: s?.halftime?.home ?? null, away: s?.halftime?.away ?? null },
-      fulltime: { home: s?.fulltime?.home ?? null, away: s?.fulltime?.home ?? null },
+      fulltime: { home: s?.fulltime?.home ?? null, away: s?.fulltime?.away ?? null },
       extratime: { home: s?.extratime?.home ?? null, away: s?.extratime?.away ?? null },
       penalty: { home: s?.penalty?.home ?? null, away: s?.penalty?.away ?? null },
     },
@@ -209,7 +222,6 @@ export class ApiFootballProvider implements FootballProvider {
     if (json && json.response && json.response.length > 0) {
       fixtures = json.response.map(mapFixture);
     } else {
-      // Fallback si clé absente ou pas de match live en ce moment précis
       fixtures = FALLBACK_MATCHES.filter(m => ['1H', '2H', 'HT', 'ET', 'P'].includes(m.status.short));
     }
 
@@ -263,7 +275,7 @@ export class ApiFootballProvider implements FootballProvider {
     let fixture = fixtures.length > 0 ? mapFixture(fixtures[0]) : null;
 
     if (!fixture) {
-      fixture = FALLBACK_MATCHES.find(m => m.id === id) || null;
+      fixture = FALLBACK_MATCHES.find((m: FootballFixture) => m.id === id) || null;
     }
 
     if (fixture) setCache(cacheKey, fixture, TTL.FIXTURES_TODAY);
